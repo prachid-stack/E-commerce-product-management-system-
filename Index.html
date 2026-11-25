@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TechMart — Online Store & Inventory</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
+
+  <!-- Top Storefront Header -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      <!-- Brand Logo -->
+      <div class="flex items-center gap-2.5 shrink-0">
+        <div class="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm">
+          <i class="fa-solid fa-bag-shopping text-base"></i>
+        </div>
+        <span class="font-bold text-xl tracking-tight text-slate-900">TechMart</span>
+      </div>
+
+      <!-- Mode Switcher (Customer Storefront vs Store Admin) -->
+      <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+        <button id="btn-mode-customer" onclick="switchMode('customer')"
+          class="px-3.5 py-1.5 rounded-lg text-sm font-semibold bg-white text-blue-600 shadow-sm transition">
+          <i class="fa-solid fa-store mr-1.5"></i>Customer Store
+        </button>
+        <button id="btn-mode-admin" onclick="switchMode('admin')"
+          class="px-3.5 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 transition">
+          <i class="fa-solid fa-sliders mr-1.5"></i>Store Admin
+        </button>
+      </div>
+
+      <!-- Customer Bag Button -->
+      <button onclick="toggleBagModal()" class="relative p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition">
+        <i class="fa-solid fa-cart-shopping text-base"></i>
+        <span id="bag-badge" class="hidden absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center">0</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Notification Toast Banner -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+  <!-- =====================================================================
+       VIEW 1: CUSTOMER STOREFRONT
+       ===================================================================== -->
+  <main id="view-customer" class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <!-- Hero Banner -->
+    <section class="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 rounded-2xl p-6 sm:p-10 text-white flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-md">
+      <div class="space-y-2 max-w-xl">
+        <span class="inline-block px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-semibold uppercase tracking-wider">
+          New Arrivals
+        </span>
+        <h1 class="text-2xl sm:text-4xl font-bold leading-tight">
+          Upgrade Your Everyday Workspace
+        </h1>
+        <p class="text-slate-300 text-sm sm:text-base">
+          Browse curated tech essentials, filter by category, look up any item by product code, or sort by best price.
+        </p>
+      </div>
+      <div class="flex flex-wrap gap-3">
+        <button onclick="document.getElementById('search-input').focus()" class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition shadow">
+          Shop Catalog
+        </button>
+      </div>
+    </section>
+
+    <!-- Search, Category Filter & Price Sort Bar -->
+    <section class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+      <!-- Search Input (Supports both Product ID e.g. P101 and Category e.g. Electronics) -->
+      <div class="flex-1 flex flex-col sm:flex-row gap-2">
+        <select id="search-mode" onchange="applyCustomerFilters()" class="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-medium text-slate-700 focus:outline-none focus:border-blue-500">
+          <option value="all">Search All</option>
+          <option value="id">By Product ID (e.g. P101)</option>
+          <option value="category">By Category (e.g. Electronics)</option>
+        </select>
+        <div class="relative flex-1">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3.5 text-slate-400 text-sm"></i>
+          <input type="text" id="search-input" oninput="applyCustomerFilters()"
+            placeholder="Search by Product ID (P101) or Category (Electronics)..."
+            class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-9 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-blue-500" />
+          <button id="clear-search-btn" onclick="clearSearch()" class="hidden absolute right-3 top-3 text-slate-400 hover:text-slate-600">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Category Dropdown & Price Sort -->
+      <div class="flex flex-wrap items-center gap-2">
+        <select id="category-dropdown" onchange="selectCategoryDropdown(this.value)"
+          class="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-medium text-slate-700 focus:outline-none focus:border-blue-500">
+          <option value="">All Categories</option>
+        </select>
+
+        <select id="sort-select" onchange="applyCustomerFilters()"
+          class="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-medium text-slate-700 focus:outline-none focus:border-blue-500">
+          <option value="default">Sort: Featured (ID)</option>
+          <option value="price-asc">Price: Low to High</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- Status / Search Message Banner -->
+    <div id="customer-status-banner" class="hidden rounded-xl px-4 py-3 text-sm font-medium"></div>
+
+    <!-- Product Grid -->
+    <section>
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-bold text-slate-900">Available Products</h2>
+        <span id="customer-count-label" class="text-sm text-slate-500">0 items</span>
+      </div>
+      <div id="customer-product-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+        <!-- Rendered dynamically -->
+      </div>
+    </section>
+  </main>
+
+  <!-- =====================================================================
+       VIEW 2: STORE ADMIN PORTAL
+       ===================================================================== -->
+  <main id="view-admin" class="hidden flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <!-- Admin Header & File Persistence Controls -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <div>
+        <h1 class="text-xl font-bold text-slate-900">Store Inventory Manager</h1>
+        <p class="text-sm text-slate-500 mt-0.5">Add new products, update stock quantities, or import/export <span class="font-mono text-slate-700">products.txt</span>.</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-2.5">
+        <label class="cursor-pointer px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-sm font-semibold transition flex items-center gap-2">
+          <i class="fa-solid fa-file-arrow-up text-blue-600"></i>
+          <span>Load products.txt</span>
+          <input type="file" id="file-upload-input" accept=".txt" onchange="handleFileUpload(event)" class="hidden" />
+        </label>
+        <button onclick="downloadProductsFile()" class="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition flex items-center gap-2 shadow-sm">
+          <i class="fa-solid fa-file-arrow-down"></i>
+          <span>Save & Export products.txt</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Two Column Admin Forms: Add Product & Update Stock -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Form 1: Add New Product -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-base font-bold text-slate-900">Add New Product</h2>
+          <span class="text-xs font-semibold px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700">Next ID: <span id="next-id-preview">P101</span></span>
+        </div>
+        <form onsubmit="handleAddProduct(event)" class="space-y-3.5">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Product Name</label>
+            <input type="text" id="admin-name" required placeholder="e.g. Wireless Mouse"
+              class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-blue-500" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Category</label>
+            <input type="text" id="admin-category" required placeholder="e.g. Electronics"
+              class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-blue-500" />
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Price (₹)</label>
+              <input type="number" id="admin-price" step="any" required placeholder="e.g. 799"
+                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-blue-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Initial Stock</label>
+              <input type="number" id="admin-stock" required placeholder="e.g. 20"
+                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-blue-500" />
+            </div>
+          </div>
+          <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition">
+            Add Product to Store
+          </button>
+        </form>
+      </div>
+
+      <!-- Form 2: Update Product Stock -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-4">
+        <div class="space-y-4">
+          <h2 class="text-base font-bold text-slate-900">Update Product Stock</h2>
+          <form onsubmit="handleUpdateStock(event)" class="space-y-3.5">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Product ID</label>
+              <input type="text" id="admin-update-id" required placeholder="e.g. P101"
+                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm uppercase focus:outline-none focus:border-blue-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">New Stock Quantity</label>
+              <input type="number" id="admin-update-stock" required placeholder="e.g. 0"
+                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-blue-500" />
+            </div>
+            <button type="submit" class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition">
+              Update Stock
+            </button>
+          </form>
+        </div>
+
+        <div class="pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+          <span>Need default items?</span>
+          <button type="button" onclick="resetDefaultCatalog()" class="text-blue-600 hover:underline font-semibold">
+            Restore Sample Catalog
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Complete Inventory Table -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <h2 class="text-base font-bold text-slate-900">All Store Products</h2>
+        <button onclick="sortAdminTableByPrice()" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition self-start sm:self-auto">
+          <i class="fa-solid fa-arrow-up-short-wide mr-1"></i>Sort by Price (Low to High)
+        </button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+          <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-semibold border-b border-slate-200">
+            <tr>
+              <th class="px-6 py-3.5">Product ID</th>
+              <th class="px-6 py-3.5">Product Name</th>
+              <th class="px-6 py-3.5">Category</th>
+              <th class="px-6 py-3.5">Price</th>
+              <th class="px-6 py-3.5">Stock Status</th>
+              <th class="px-6 py-3.5 text-right">Quick Stock</th>
+            </tr>
+          </thead>
+          <tbody id="admin-table-body" class="divide-y divide-slate-100">
+            <!-- Rendered dynamically -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- Customer Shopping Bag Drawer Modal -->
+  <div id="bag-modal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex justify-end">
+    <div class="bg-white w-full max-w-md h-full flex flex-col justify-between p-6 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-4">
+        <h3 class="font-bold text-lg text-slate-900">Your Shopping Bag</h3>
+        <button onclick="toggleBagModal()" class="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div id="bag-items-list" class="flex-1 overflow-y-auto py-4 space-y-3">
+        <!-- Bag items -->
+      </div>
+
+      <div class="border-t border-slate-200 pt-4 space-y-3">
+        <div class="flex items-center justify-between text-base font-bold">
+          <span>Total</span>
+          <span id="bag-total">₹0</span>
+        </div>
+        <button onclick="checkoutBag()" class="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition shadow">
+          Place Order
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="bg-white border-t border-slate-200 py-6 mt-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+      <span>TechMart Online Store</span>
+      <span>Catalog synced with <span class="font-mono text-slate-700">products.txt</span></span>
+    </div>
+  </footer>
+
+  <script>
+    /* ========================================================================
+       CORE DATA STRUCTURES (Strictly PS No. 13: HashMap + ArrayList + File I/O)
+       ======================================================================== */
+
+    // Product Entity
+    class Product {
+      constructor(id, name, category, price, stock) {
+        this.id = id;
+        this.name = name;
+        this.category = category;
+        this.price = Number(price);
+        this.stock = Number(stock);
+      }
+
+      toFileLine() {
+        return `${this.id}|${this.name}|${this.category}|${this.price}|${this.stock}`;
+      }
+    }
+
+    // Store Engine backed by a HashMap (Map<String, Product>) for O(1) ID lookup & stock updates
+    // and ArrayList (Array<Product>) for Low-to-High Price Sorting.
+    const productMap = new Map(); // HashMap: Key = Product ID ("P101"), Value = Product
+    let nextIdNumber = 101;
+    let customerBag = new Map(); // Key = Product ID, Value = quantity in bag
+    let adminSortedByPrice = false;
+
+    const STORAGE_KEY = 'techmart_products_txt';
+
+    // Category icon helper for clean storefront cards
+    function getCategoryIcon(category) {
+      const cat = category.toLowerCase();
+      if (cat.includes('electron') || cat.includes('tech') || cat.includes('comp')) return 'fa-laptop';
+      if (cat.includes('audio') || cat.includes('sound')) return 'fa-headphones';
+      if (cat.includes('book')) return 'fa-book';
+      if (cat.includes('cloth') || cat.includes('apparel') || cat.includes('fashion')) return 'fa-shirt';
+      if (cat.includes('home') || cat.includes('kitchen')) return 'fa-couch';
+      return 'fa-box-open';
+    }
+
+    /* ========================================================================
+       FILE HANDLING (products.txt serialization & persistence)
+       ======================================================================== */
+
+    function saveToStorage() {
+      // Convert HashMap values to ArrayList and sort by ID before serializing
+      const list = Array.from(productMap.values()).sort((a, b) => a.id.localeCompare(b.id));
+      const fileContent = list.map(p => p.toFileLine()).join('\n');
+      localStorage.setItem(STORAGE_KEY, fileContent);
+    }
+
+    function loadFromTextContent(content) {
+      productMap.clear();
+      let maxId = 100;
+
+      const lines = content.split(/\r?\n/);
+      for (const rawLine of lines) {
+        const line = rawLine.trim();
+        if (!line) continue;
+        const parts = line.split('|');
+        if (parts.length === 5) {
+          const id = parts[0].trim().toUpperCase();
+          const name = parts[1].trim();
+          const category = parts[2].trim();
+          const price = parseFloat(parts[3].trim());
+          const stock = parseInt(parts[4].trim(), 10);
+
+          if (id && name && category && !isNaN(price) && price > 0 && !isNaN(stock) && stock >= 0) {
+            productMap.set(id, new Product(id, name, category, price, stock));
+            if (id.startsWith('P')) {
+              const num = parseInt(id.substring(1), 10);
+              if (!isNaN(num) && num > maxId) {
+                maxId = num;
+              }
+            }
+          }
+        }
+      }
+      nextIdNumber = maxId + 1;
+      saveToStorage();
+    }
+
+    function initStore() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved !== null && saved.trim().length > 0) {
+        loadFromTextContent(saved);
+      } else {
+        resetDefaultCatalog(true);
+      }
+      refreshUI();
+    }
+
+    function resetDefaultCatalog(silent = false) {
+      const defaultTxt = [
+        'P101|Wireless Mouse|Electronics|799|20',
+        'P102|Keyboard|Electronics|1200|10',
+        'P103|USB-C Hub|Electronics|1499|15',
+        'P104|Desk Lamp|Home Office|899|12',
+        'P105|Laptop Stand|Accessories|649|0'
+      ].join('\n');
+      loadFromTextContent(defaultTxt);
+      customerBag.clear();
+      refreshUI();
+      if (!silent) {
+        showToast('Sample store catalog restored.', 'success');
+      }
+    }
+
+    function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        loadFromTextContent(e.target.result);
+        customerBag.clear();
+        refreshUI();
+        showToast(`Loaded ${productMap.size} products from ${file.name}.`, 'success');
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    function downloadProductsFile() {
+      const list = Array.from(productMap.values()).sort((a, b) => a.id.localeCompare(b.id));
+      const content = list.m
